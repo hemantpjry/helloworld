@@ -27,7 +27,7 @@ pipeline {
                 echo 'Creating WAR Artifact...'
                 sh 'mvn clean package'
                 echo 'WAR Artifact Created Successfully!'
-                echo 'done'
+                echo 'done..!!'
             }
         }
 
