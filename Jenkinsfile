@@ -29,6 +29,20 @@ pipeline {
                 echo 'WAR Artifact Created Successfully!'
             }
         }
+        stage('Build & Tag Docker Image') {
+              steps {
+                  echo 'Building Docker Image with Tags...'
+                  sh "docker build -t hemantpjry/hello-world:latest ."
+                  echo 'Docker Image Build Completed!'
+             }
+        }
+         stage('Docker Image Scanning') {
+               steps {
+                   echo 'Scanning Docker Image with Trivy...'
+                   sh 'trivy image hemantpjry/hello-world:latest || echo "Scan Failed - Proceeding with Caution"'
+                   echo 'Docker Image Scanning Completed!'
+               }
+         }
 
     }
 }
