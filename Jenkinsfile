@@ -7,6 +7,12 @@ pipeline {
         maven 'apache-maven-3.9.10'
         jdk 'java_21'
     }
+        environment {
+            PROJECT_ID = 'pollfish-assignment-1-476108'
+            REGION     = 'us-central1'  // update if needed
+            REPO_NAME  = 'demo-repo' // your Artifact Registry repo name
+            IMAGE_NAME = 'hello-world'
+        }
     stages {
         stage('Code Compilation') {
             steps {
@@ -32,8 +38,9 @@ pipeline {
         stage('Build & Tag Docker Image') {
               steps {
                   echo 'Building Docker Image with Tags...'
-                  sh "docker build -t hemantpjry/hello-world:latest ."
-                  echo 'Docker Image Build Completed!'
+                  sh '''
+                       docker build -t $IMAGE_NAME:latest .
+                  '''
              }
         }
          stage('Docker Image Scanning') {
@@ -43,6 +50,23 @@ pipeline {
                    echo 'Docker Image Scanning Completed!'
                }
          }
+        stage('Authenticate & Push to Artifact Registry') {
+                    steps {
+                        withCredentials([file(credentialsId: 'gcp-sa-key', variable: 'GOOGLE_CREDENTIALS')]) {
+                            sh '''
+                                echo "Authenticating to GCP..."
+                                gcloud auth activate-service-account --key-file=$GOOGLE_CREDENTIALS
+                                gcloud config set project $PROJECT_ID
+                                gcloud auth configure-docker $REGION-docker.pkg.dev -q
 
+                                echo "Tagging and pushing image to Artifact Registry..."
+                                docker tag $IMAGE_NAME:latest $REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/$IMAGE_NAME:latest
+                                docker push $REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/$IMAGE_NAME:latest
+
+                                echo "Image pushed successfully!"
+                            '''
+                        }
+                    }
+                }
     }
 }
