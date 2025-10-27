@@ -12,6 +12,8 @@ pipeline {
             REGION     = 'us-central1'  // update if needed
             REPO_NAME  = 'demo-repo' // your Artifact Registry repo name
             IMAGE_NAME = 'hello-world'
+            CLUSTER_NAME = 'demo-gke-cluster'
+            DEPLOY_REGION = 'us-central1'
         }
     stages {
         stage('Code Compilation') {
@@ -68,5 +70,29 @@ pipeline {
                         }
                     }
                 }
+                stage('Deploy to GKE using Helm') {
+                            steps {
+                                withCredentials([file(credentialsId: 'gcp-sa-key', variable: 'GOOGLE_CREDENTIALS')]) {
+                                    sh '''
+                                        echo "Authenticating to GCP..."
+                                        gcloud auth activate-service-account --key-file=$GOOGLE_CREDENTIALS
+                                        gcloud config set project $PROJECT_ID
+
+                                        echo "Fetching GKE credentials..."
+                                        gcloud container clusters get-credentials $CLUSTER_NAME --region $DEPLOY_REGION
+
+                                        echo "Deploying to GKE with Helm..."
+                                        helm upgrade --install hello-world ./helm/hello-world \
+                                            --set image.repository=$REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/$IMAGE_NAME \
+                                            --set image.tag=latest \
+                                            --set service.type=LoadBalancer \
+                                            --namespace default \
+                                            --create-namespace
+
+                                        echo "Deployment Successful!"
+                                    '''
+                                }
+                            }
+                        }
     }
 }
