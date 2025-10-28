@@ -65,7 +65,7 @@ pipeline {
                                 gcloud auth configure-docker $REGION-docker.pkg.dev -q
 
                                 echo "Tagging and pushing image to Artifact Registry..."
-                                docker tag $IMAGE_NAME:latest $REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/$IMAGE_NAME:$IMAGE_TAG
+                                docker tag $IMAGE_NAME:$IMAGE_TAG $REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/$IMAGE_NAME:$IMAGE_TAG
                                 docker push $REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/$IMAGE_NAME:$IMAGE_TAG
 
                                 echo "Image pushed successfully!"

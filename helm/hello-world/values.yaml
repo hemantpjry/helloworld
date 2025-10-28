@@ -2,7 +2,7 @@ replicaCount: 2
 
 image:
   repository: us-central1-docker.pkg.dev/pollfish-assignment-1-476108/demo-repo/hello-world
-  tag: "latest"
+  tag: ""
   pullPolicy: Always
 
 service:
