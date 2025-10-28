@@ -8,6 +8,7 @@ pipeline {
         jdk 'java_21'
     }
         environment {
+            IMAGE_TAG = "${BUILD_NUMBER}"
             PROJECT_ID = 'pollfish-assignment-1-476108'
             REGION     = 'us-central1'  // update if needed
             REPO_NAME  = 'demo-repo' // your Artifact Registry repo name
@@ -41,14 +42,16 @@ pipeline {
               steps {
                   echo 'Building Docker Image with Tags...'
                   sh '''
-                       docker build -t $IMAGE_NAME:latest .
+                       docker build -t $IMAGE_NAME:$IMAGE_TAG .
                   '''
              }
         }
          stage('Docker Image Scanning') {
                steps {
-                   echo 'Scanning Docker Image with Trivy...'
-                   sh 'trivy image hemantpjry/hello-world:latest || echo "Scan Failed - Proceeding with Caution"'
+                   echo "Scanning Docker Image: $IMAGE_NAME:$IMAGE_TAG"
+                   sh '''
+                       trivy image $IMAGE_NAME:$IMAGE_TAG || echo "Scan Failed - Proceeding with Caution"
+                   '''
                    echo 'Docker Image Scanning Completed!'
                }
          }
@@ -62,8 +65,8 @@ pipeline {
                                 gcloud auth configure-docker $REGION-docker.pkg.dev -q
 
                                 echo "Tagging and pushing image to Artifact Registry..."
-                                docker tag $IMAGE_NAME:latest $REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/$IMAGE_NAME:latest
-                                docker push $REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/$IMAGE_NAME:latest
+                                docker tag $IMAGE_NAME:latest $REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/$IMAGE_NAME:$IMAGE_TAG
+                                docker push $REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/$IMAGE_NAME:$IMAGE_TAG
 
                                 echo "Image pushed successfully!"
                             '''
@@ -84,7 +87,7 @@ pipeline {
                                         echo "Deploying to GKE with Helm..."
                                         helm upgrade --install hello-world ./helm/hello-world \
                                             --set image.repository=$REGION-docker.pkg.dev/$PROJECT_ID/$REPO_NAME/$IMAGE_NAME \
-                                            --set image.tag=latest \
+                                            --set image.tag=$IMAGE_TAG \
                                             --set service.type=LoadBalancer \
                                             --namespace default \
                                             --create-namespace
