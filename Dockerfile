@@ -1,8 +1,9 @@
-FROM tomcat:9.0.82-jdk21-temurin
+FROM eclipse-temurin:21-jdk
 LABEL maintainer="hemanthpoojary27@gmail.com"
-RUN rm -rf /usr/local/tomcat/webapps/ROOT
 RUN useradd -m hello-world
-COPY target/helloworld*.jar  /usr/local/tomcat/webapps/
-EXPOSE 8080
+WORKDIR /app
+COPY target/helloworld*.jar app.jar
+RUN chown -R hello-world:hello-world /app
 USER hello-world
-CMD ["catalina.sh", "run"]
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]
