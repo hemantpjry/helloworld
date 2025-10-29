@@ -1,49 +1,88 @@
-# ☁️ Hello World - Spring Boot on GKE (CI/CD with Jenkins, Docker, Helm & Artifact Registry)
+☁️ Hello World - Spring Boot on GKE
+(End-to-End CI/CD with Jenkins, Docker, Helm, Artifact Registry, Prometheus & Grafana)
 
-A simple **Spring Boot "Hello World" application** deployed on **Google Kubernetes Engine (GKE)** using a complete **CI/CD pipeline** built with **Jenkins**, **Docker**, **Helm**, **Trivy**, and **Artifact Registry**.
+This project demonstrates the end-to-end DevOps implementation of a Spring Boot “Hello World” application deployed on Google Kubernetes Engine (GKE).
+It covers the complete workflow — from source code build and security scanning to container deployment and real-time monitoring — using a production-grade CI/CD pipeline.
 
-This project demonstrates a **production-style DevOps workflow**, covering source build, image scanning, artifact publishing, and automated deployment to Kubernetes.
+🚀 Tech Stack Overview
+Category	Tool / Technology
+Language	Java 21
+Build Tool	Apache Maven
+CI/CD	Jenkins Declarative Pipeline
+Containerization	Docker
+Image Scanning	Trivy
+Artifact Storage	Google Artifact Registry
+Deployment	Helm
+Orchestration	Kubernetes (GKE)
+Cloud Provider	Google Cloud Platform (GCP)
+Monitoring	Prometheus, Grafana
+Metrics Exporter	Spring Boot Actuator
 
----
+🧩 CI/CD Pipeline Overview
+The Jenkins pipeline automates the entire application lifecycle — from code commit to deployment on GKE.
+Stage	Description
+1. Code Compilation	Compiles Java source using Maven.
+2. Unit Testing	Executes JUnit test cases.
+3. Packaging	Packages the Spring Boot application into a JAR file.
+4. Docker Image Build & Tag	Builds Docker image and tags with Jenkins build number.
+5. Security Scan	Scans Docker image using Trivy for vulnerabilities.
+6. Push to Artifact Registry	Publishes the secure image to Google Artifact Registry.
+7. Deploy to GKE via Helm	Performs Helm upgrade/install on the GKE cluster.
+   
+⚙️ CI/CD Trigger Flow
+Developer pushes code to Bitbucket.
+Webhook triggers Jenkins build.
+Jenkins executes the pipeline — build, scan, push, deploy.
+Application automatically updated in GKE.
 
-## 🚀 Tech Stack
+🧱 Jenkinsfile (Key Highlights)
+pipeline {
+    agent any
+    environment {
+        IMAGE_TAG     = "${BUILD_NUMBER}"
+        PROJECT_ID    = 'pollfish-assignment-1-476108'
+        REGION        = 'us-central1'
+        REPO_NAME     = 'demo-repo'
+        IMAGE_NAME    = 'hello-world'
+        CLUSTER_NAME  = 'demo-gke-cluster'
+        DEPLOY_REGION = 'us-central1'
+    }
 
-| Category | Tool / Technology |
-|-----------|-------------------|
-| Language | Java 21 |
-| Build Tool | Apache Maven |
-| CI/CD | Jenkins Declarative Pipeline |
-| Containerization | Docker |
-| Image Scanning | Trivy |
-| Artifact Storage | Google Artifact Registry |
-| Deployment | Helm |
-| Orchestration | Kubernetes (GKE) |
-| Cloud Provider | Google Cloud Platform (GCP) |
+    stages {
+        stage('Checkout') {
+            steps { checkout scm }
+        }
+        stage('Build') {
+            steps {
+                sh 'mvn clean package -DskipTests'
+            }
+        }
+        stage('Trivy Scan') {
+            steps {
+                sh 'trivy image --exit-code 0 --severity HIGH,CRITICAL ${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${IMAGE_TAG}'
+            }
+        }
+        stage('Build & Push Image') {
+            steps {
+                sh '''
+                docker build -t us-central1-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${IMAGE_TAG} .
+                docker push us-central1-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME}:${IMAGE_TAG}
+                '''
+            }
+        }
+        stage('Deploy to GKE') {
+            steps {
+                sh '''
+                helm upgrade --install hello-world ./helm/hello-world \
+                --set image.repository=us-central1-docker.pkg.dev/${PROJECT_ID}/${REPO_NAME}/${IMAGE_NAME} \
+                --set image.tag=${IMAGE_TAG}
+                '''
+            }
+        }
+    }
+}
 
----
-
-## 🧩 CI/CD Pipeline Overview
-
-The Jenkins pipeline automates the complete lifecycle:
-
-| Stage | Description |
-|--------|-------------|
-| **1. Code Compilation** | Compiles the Java source using Maven. |
-| **2. Code QA Execution** | Runs unit tests via JUnit. |
-| **3. Code Packaging** | Packages the application into a JAR artifact. |
-| **4. Build & Tag Docker Image** | Builds Docker image using the project’s Dockerfile and tags with the Jenkins build number. |
-| **5. Docker Image Scanning** | Performs security scan on the image using Trivy. |
-| **6. Push to Artifact Registry** | Authenticates to GCP and pushes the image to Artifact Registry. |
-| **7. Deploy to GKE using Helm** | Deploys or upgrades the release in GKE using Helm. |
-
-### ✅ Trigger
-Pipeline runs automatically on every code push via Bitbucket → Jenkins webhook.
-
----
-
-## 🐳 Dockerfile
-
-```dockerfile
+🐳 Dockerfile
 FROM eclipse-temurin:21-jdk
 LABEL maintainer="hemanthpoojary27@gmail.com"
 RUN useradd -m hello-world
@@ -54,13 +93,13 @@ USER hello-world
 EXPOSE 8080
 ENTRYPOINT ["java", "-jar", "app.jar"]
 
-Uses non-root user (hello-world) for security.
-Packages Spring Boot JAR into lightweight JDK 21 base image.
-Exposes port 8080 for application access.
+
+✅ Best Practices Followed:
+Uses a non-root user for enhanced security.
+Lightweight JDK base image.
+Exposes port 8080 for the application.
 
 🧠 Helm Deployment Structure
-bash
-Copy code
 helm/
 └── hello-world/
     ├── templates/
@@ -83,60 +122,105 @@ service:
 resources: {}
 
 ☸️ Kubernetes Deployment Summary
-Type: LoadBalancer
-Replicas: 2
-Namespace: default
-Service Port: 80 → 8080
+Parameter	Value
+Namespace	default
+Replicas	2
+Service Type	LoadBalancer
+Service Port	80 → 8080
 
-Access the app after deployment:
+After deployment:
 kubectl get svc hello-world-hello-world
-Example output:
+
+Example Output:
 NAME                      TYPE           CLUSTER-IP       EXTERNAL-IP     PORT(S)        AGE
 hello-world-hello-world   LoadBalancer   10.0.75.213      34.63.93.9      80:31943/TCP   5m
 
-Test in browser or curl:
+Access application:
 curl http://34.63.93.9
 # Output: Hello World!
 
-⚙️ Jenkinsfile (Key Highlights)
-Uses Maven for build/test/package
-Scans Docker images with Trivy
-Authenticates and pushes to Artifact Registry
-Deploys with Helm upgrade/install to GKE
+🧪 Security Highlights
+Integrated Trivy for container vulnerability scanning.
+Images are stored in private Artifact Registry
+Application runs as a non-root user.
+Secure CI/CD pipeline with role-based GCP authentication.
 
-Environment variables:
-environment {
-    IMAGE_TAG = "${BUILD_NUMBER}"
-    PROJECT_ID = 'pollfish-assignment-1-476108'
-    REGION     = 'us-central1'
-    REPO_NAME  = 'demo-repo'
-    IMAGE_NAME = 'hello-world'
-    CLUSTER_NAME = 'demo-gke-cluster'
-    DEPLOY_REGION = 'us-central1'
-}
+📈 Monitoring and Observability (Prometheus & Grafana)
+To achieve end-to-end observability, Prometheus and Grafana were configured for monitoring both cluster and application-level metrics.
 
-🧪 Security
-Docker image scanning integrated via Trivy
-Non-root user used inside Docker container
-Artifact hosted in private GCP Artifact Registry
+🧩 Monitoring Components
+Component	Description
+Prometheus Operator	Collects metrics from Kubernetes and the Hello World app.
+Grafana	Used to visualize real-time metrics and trends.
+ServiceMonitor	Defines how Prometheus scrapes app metrics.
+Spring Boot Actuator	Exposes /actuator/prometheus metrics endpoint.
 
-📈 Project Highlights
-✅ Fully automated CI/CD pipeline
-✅ Secure image scanning before deployment
-✅ Dynamic tagging via Jenkins build number
-✅ Infrastructure-as-Code via Helm & Kubernetes
-✅ End-to-end cloud-native deployment on GKE
+🧠 Implementation Steps
+Deploy Prometheus & Grafana
+helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+helm install monitoring prometheus-community/kube-prometheus-stack -n monitoring --create-namespace
+
+Expose Services
+Converted service types to LoadBalancer:
+kubectl edit svc monitoring-kube-prometheus-prometheus -n monitoring
+kubectl edit svc monitoring-grafana -n monitoring
+Prometheus UI: http://<prometheus-external-ip>:9090
+Grafana UI: http://<grafana-external-ip>:80
+
+Create ServiceMonitor
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: hello-world-servicemonitor
+  namespace: monitoring
+  labels:
+    release: monitoring
+spec:
+  selector:
+    matchLabels:
+      app: hello-world
+  namespaceSelector:
+    matchNames:
+      - default
+  endpoints:
+    - port: http
+      path: /actuator/prometheus
+      interval: 15s
 
 
-🏗️ Future Enhancements
-Integrate SonarQube for code quality analysis
-Add Slack notification for build/deployment status
-Implement Blue/Green or Canary deployments via Helm
+Applied using:
+kubectl apply -f hello-world-servicemonitor.yaml
+Verify Metrics Collection
+Visit Prometheus → Status → Targets → confirm hello-world target is UP.
+Metrics include JVM, CPU, memory, and HTTP request data.
 
-📊 Architecture Overview 
+Grafana Visualization
+Prometheus added as a default data source.
+Imported dashboard from Grafana.com
+:
 
-Developer Commit → Jenkins CI/CD → Docker Build → Trivy Scan
-           ↓
-   Google Artifact Registry
-           ↓
-   Helm Deploy → GKE Cluster → LoadBalancer Service → Browser
+Example Dashboard ID: 4701 (Spring Boot Statistics)
+Created visual panels for:
+Application uptime
+Request rate
+JVM heap usage
+CPU & memory metrics
+
+✅ Outcome
+Real-time visibility into application health and performance.
+Prometheus scrapes /actuator/prometheus metrics successfully.
+Grafana displays dashboards confirming end-to-end monitoring integration.
+
+🧭 Architecture Flow
+Developer Commit → Jenkins CI/CD → Maven Build → Trivy Scan
+      ↓
+Google Artifact Registry (Docker Image Storage)
+      ↓
+Helm Deploy → GKE Cluster → LoadBalancer Service (Hello World App)
+      ↓
+Prometheus (Metrics Scraping) → Grafana (Visualization Dashboard)
+
+
+👨‍💻 Author
+Hemanth Poojary
+📧 hemanthpoojary27@gmail.com
