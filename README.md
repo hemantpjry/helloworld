@@ -220,7 +220,7 @@ Prometheus scrapes /actuator/prometheus metrics successfully.
 Grafana dashboards confirm end-to-end monitoring integration.
 
 🧭 Architecture Flow
-mathematica
+
 
 Developer Commit → Jenkins CI/CD → Maven Build → Trivy Scan
       ↓
